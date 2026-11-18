@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Progress Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#16202e;--mut:#5d6b7c;--line:#d5dce4;--red:#d63a3a;--blue:#2f6fd6;--amber:#e69a12;--green:#1f9d55;--acc:#16202e}
+@media(prefers-color-scheme:dark){:root{--bg:#10151c;--card:#19212b;--ink:#e8edf3;--mut:#9aa8b8;--line:#2a3542;--acc:#e8edf3}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 'Source Serif 4',Georgia,serif}
+h1,h2,h3,button,.tab,label,.big{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+header{padding:20px 16px 0;max-width:980px;margin:auto}
+h1{margin:0;font-size:1.7rem;font-weight:800}
+.sub{color:var(--mut);margin:2px 0 12px}
+nav{display:flex;gap:6px;overflow-x:auto;padding:0 16px 10px;max-width:980px;margin:auto;position:sticky;top:0;background:var(--bg);z-index:5}
+.tab{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;font-size:.9rem}
+.tab.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+.tab i{font-style:normal;font-size:.75rem;margin-left:6px;padding:1px 6px;border-radius:10px;color:#fff}
+main{max-width:980px;margin:auto;padding:8px 16px 60px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.score{display:flex;align-items:center;gap:16px;margin-bottom:10px}
+.big{font-size:2.6rem;font-weight:800;line-height:1;min-width:110px}
+.bar{height:14px;background:var(--line);border-radius:8px;overflow:hidden;flex:1}
+.bar b{display:block;height:100%;transition:width .4s,background .4s}
+.row{display:grid;grid-template-columns:1fr 90px 90px 70px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.row.chk{grid-template-columns:1fr 70px}
+.row small{color:var(--mut)}
+input,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;width:100%}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--green)}
+textarea{min-height:80px;resize:vertical}
+.pc{font-family:'Bricolage Grotesque',sans-serif;font-weight:600;text-align:right}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+button.b{font-family:'Bricolage Grotesque',sans-serif;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 12px;cursor:pointer}
+button.b.p{background:var(--acc);color:var(--bg)}
+.task{display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.task span{flex:1}.task.done span{text-decoration:line-through;color:var(--mut)}
+.x{background:none;border:0;color:var(--mut);cursor:pointer;font-size:1.1rem}
+.add{display:flex;gap:8px;margin-top:8px}
+.leg{display:flex;gap:14px;flex-wrap:wrap;font-family:'Bricolage Grotesque',sans-serif;font-size:.8rem;color:var(--mut);margin-bottom:12px}
+.leg span:before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;background:var(--c)}
+.ov{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line);cursor:pointer}
+.ov .bar{max-width:320px}
+h2{margin:0 0 8px;font-size:1.25rem}h3{margin:14px 0 6px;font-size:1rem}
+.hint{color:var(--mut);font-size:.9rem;margin:0 0 8px}
+@media(max-width:600px){.row{grid-template-columns:1fr 1fr 1fr 60px}.row>:first-child{grid-column:1/-1}.big{font-size:2rem;min-width:80px}}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+details{border-top:1px solid var(--line);padding:8px 0}
+summary{cursor:pointer;font-family:'Bricolage Grotesque',sans-serif;font-weight:600}
+details ul{margin:8px 0 4px;padding-left:20px}details li{margin:3px 0}
+.goal{font-size:1.02rem;margin:0 0 8px}
+.q{font-style:italic;color:var(--mut)}
+.sec{border-top:1px solid var(--line);padding:10px 0}.sec ul{padding:0;list-style:none;margin:8px 0}.sec li{display:flex;gap:6px;margin:6px 0;align-items:flex-start}.sec textarea{min-height:44px}
+</style></head><body>
+<header><h1>My Progress Tracker</h1><p class="sub" id="today"></p></header>
+<nav id="nav" aria-label="Sections"></nav>
+<main id="main"></main>
+<script>
+const KEY='progress-tracker-v1';
+let S={v:{},days:{},q:{},dob:'',plans:{}};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const col=p=>p<20?'var(--red)':p<60?'var(--blue)':p<90?'var(--amber)':'var(--green)';
+const iso=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
+const addDay=(s,n)=>{const d=new Date(s+'T12:00');d.setDate(d.getDate()+n);return iso(d)};
+const THEMES=['Overall overlook','Financial','Future','Freelancing','Health and wellness','Mental health','Fashion and hobbies'];
+let date=iso(new Date()),tab='daily',edit=false;
+
+// n = numeric (current / target), c = checkbox
+const N=(id,n,c,t,u)=>({id,n,t:'n',c,tg:t,u:u||''}),C=(id,n)=>({id,n,t:'c'});
+const A=[
+{k:'fin',n:'Financial',items:[N('f1','Emergency fund (KES)',0,240000),N('f2','KCB lock savings this month',0,10000),N('f3','Britam money market this month',0,10000),N('f4','Leon education fund this month',0,1000),N('f5','Debt cleared (KES paid)',0,100000),C('f6','Monthly budget reviewed (last Monday)'),C('f7','No shylock loan this month')]},
+{k:'onl',n:'Online income',items:[N('o1','YouTube: Sicky Comics',203,250),N('o2','YouTube: Linda Mwananchi',57,87),N('o3','Facebook: Linda Mwananchi',3600,4500),N('o4','Facebook: Safe Haven',58,100),N('o5','Facebook: Pixel Forge',1748,2000),N('o6','TikTok: Linda Mwananchi',5880,8000),N('o7','TikTok: Sharp Deals',42,100),N('o8','TikTok: Safe Haven',9,50),N('o9','TikTok: Pixel Forge',1748,2000),C('o10','Sharp Deals Facebook page created'),C('o11','LinkedIn resume and posting')]},
+{k:'hea',n:'Health & wellness',items:[N('h1','Soda-free days this month',0,30),N('h2','Workouts this week',0,3),N('h3','Days with greens this week',0,7),N('h4','Days with 2-3 L water this week',0,7),C('h5','Monthly meat refill done')]},
+{k:'hob',n:'Hobbies',items:[N('b1','Cycling km this month',0,250,'km'),C('b2','Special meal cooked'),C('b3','Swim session'),C('b4','Live football match'),C('b5','Group ride (Baiskel Safaris)'),C('b6','Monthly experience')]},
+{k:'fas',n:'Fashion & style',items:[N('s1','Trousers bought this month',0,1),N('s2','Shoes bought this month',0,1),N('s3','Haircuts this month',0,2)]},
+{k:'men',n:'Mental well-being',items:[N('m1','Meditation days this week',0,7),N('m2','Journaling days this week',0,7),N('m3','Podcast days this week',0,7),N('m4','Friends reached out to this week',0,3),C('m5','Monthly meet-up held')]},
+{k:'far',n:'Goat farming',items:[N('g1','Goats owned',0,5),C('g2','Research complete'),C('g3','Goat shed built'),C('g4','Fencing and water ready'),C('g5','Farm records up to date')]},
+{k:'hom',n:'Home projects',items:[C('p1','Office: desk and chair'),C('p2','Office: storage and lighting'),C('p3','Office: tech upgrades'),C('p4','Office: decor and ventilation'),N('p5','Countryside house furnishing (%)',0,100)]},
+{k:'fut',n:'Future thinking',items:[N('u1','Sunday reviews this month',0,4),C('u2','Monthly future review done (last Sunday)'),C('u3','New project/skill/investment this quarter'),C('u4','Year: learned a future-proof skill'),C('u5','Year: started a long-term investment'),C('u6','Year: built a new income stream')]},
+{k:'ret',n:'Retire by 40',items:[N('r0','Monthly cashflow vs needed (KES)',0,100000),N('r1','Freelancing income (%)',0,100),N('r2','Self-sufficient goat farm (%)',0,100),N('r3','Dairy farming (%)',0,100),N('r4','Jersey store (%)',0,100),N('r5','Chips and chicken outlet (%)',0,100),N('r6','Chicken farm (%)',0,100),N('r7','MBA (%)',0,100),N('r8','Echocardiography (%)',0,100),N('r9','Medical and education insurance (%)',0,100),N('r10','Furniture store (%)',0,100),N('r11','Government bills and bonds (%)',0,100)]}
+];
+const QA=['Financial stability','Career & business','Physical health','Mental well-being','Relationships','Farming & assets','Personal growth','Discipline & consistency'];
+
+
+const P={
+plan:{goal:`The world is unfair. If you play fair, you will most likely lose. Stop lagging and stop only planning: do these things without waiting.`,secs:[
+[`Daily schedule (above and beyond)`,[`Monday: Financial`,`Tuesday: Future`,`Wednesday: Freelancing`,`Thursday: Health and wellness`,`Friday: Mental health`,`Saturday: Fashion and hobbies`,`Sunday: Overall overlook`,`Note: the detailed plans give some days different themes (Hobbies on Tuesday, Health on Wednesday, Future on Sunday, Agriculture on Saturday). Pick one final order and keep it.`]],
+[`Kisii December`,[`Budget is 40k.`,`Open an NCBA bank account with no mobile banking at the end of this month and deposit 5k.`,`It should be filled with locum money.`]],
+[`Online accounts: targets`,[`YouTube: Sicky Comics 203, target 250. Linda Mwananchi 57, target 87.`,`Facebook: Linda Mwananchi 3,600, target 4,500. Safe Haven 58, target 100. Pixel Forge 1,748, target 2,000. Sharp Deals: create a page.`,`TikTok: Linda Mwananchi 5,880, target 8,000. Sharp Deals 42, target 100. Safe Haven 9, target 50. Pixel Forge 1,748, target 2,000.`]],
+[`Strategies`,[`Post more content: 2 shorts per day.`,`Resume LinkedIn posting.`]]]},
+fin:{theme:`Monday: Financial muscle, online income and stability`,goal:`Build strong financial stability in 2026: eliminate and stay out of debt, build a solid emergency fund, grow income through online freelancing and digital content, and make disciplined long-term decisions.`,secs:[
+[`1. Emergency fund (foundation first)`,[`Target: save 240,000 (1 year of living expenses) by end of 2026.`,`Emergency fund comes before wants: 10,000 monthly to KCB lock savings.`,`Track in a budgeting app or spreadsheet, reviewed every Monday.`,`Milestones: 25%, 50%, 75%, 100%.`,`Never touch it unless it is a real emergency.`]],
+[`2. Zero debt rule (non-negotiable)`,[`NO MORE SHYLOCK, EVER.`,`No new loans unless they produce income.`,`Fixed monthly debt repayment percentage until fully cleared.`,`Once debt-free, redirect that amount to the emergency fund, investments and online business tools.`]],
+[`3. Investments (slow, safe, consistent)`,[`Money market fund: Britam, minimum 10,000 per month.`,`Quarterly reviews of performance and interest rates.`,`After stability: treasury bonds and index funds.`,`No emotional or rushed investing.`]],
+[`4. Budget system (control is power)`,[`Track all income and expenses.`,`Categories: essentials, savings and investments, debt, online tools/internet/software, content creation.`,`Follow 50/30/20 as a guide, not a prison.`,`Monthly budget review on the last Monday of every month.`]],
+[`5. Research and decisions`,[`Deciding between a sacco, MMF and government bills and bonds. Keep researching; decide by end of October.`,`Bonds are for the long term.`,`Britam MMF to be considered for Leon's education money: 1k per month this year, 2k per month from January for the first 4 months.`]]]},
+onl:{theme:`Wednesday: Freelancing`,goal:`Grow online income through freelancing and digital content by building audiences on YouTube, Facebook and TikTok.`,secs:[
+[`Follower targets`,[`YouTube: Sicky Comics 203 to 250. Linda Mwananchi 57 to 87.`,`Facebook: Linda Mwananchi 3,600 to 4,500. Safe Haven 58 to 100. Pixel Forge 1,748 to 2,000.`,`TikTok: Linda Mwananchi 5,880 to 8,000. Sharp Deals 42 to 100. Safe Haven 9 to 50. Pixel Forge 1,748 to 2,000.`]],
+[`Strategies`,[`Post more content: 2 shorts per day.`,`Create a Sharp Deals Facebook page.`,`Resume LinkedIn posting and update the resume.`]]]},
+hea:{theme:`Wednesday: Nutrition, energy and physical health`,goal:`Adopt and keep a healthier lifestyle through better nutrition and eating habits, staying active, and removing unhealthy consumption patterns.`,secs:[
+[`1. Eat more greens (daily)`,[`Leafy greens (spinach, kale, lettuce, sukuma wiki) in at least one meal per day.`,`Use salads, smoothies, soups, stews or stir-fries.`,`Wednesday focus: review last week's meals and plan greens for the coming week.`]],
+[`2. Monthly meat refill`,[`Send Joshua once per month for meat refills.`,`Vary the protein: chicken, beef, fish.`,`Combine protein with vegetables and whole foods; portion and store meat for easy weekly cooking.`,`Wednesday focus: confirm stock and plan the next refill date.`]],
+[`3. No soda or soft drinks (non-negotiable)`,[`Stop soda completely.`,`Replace with water (first choice) or herbal teas.`,`Keep no soda at home; carry water at work.`,`Weekly check-in to confirm zero soda.`]],
+[`4. Supportive nutrition`,[`Drink at least 2 to 3 litres of water daily.`,`Prioritise whole foods: fruits such as watermelon, vegetables, lean proteins.`,`Limit processed foods and excess sugar. Eat for health, energy and sustainability.`]],
+[`5. Physical activity (3 times a week)`,[`3 sessions a week: home workouts, gym, bodyweight, or cycling (counts as a workout).`,`Build consistency, not intensity.`,`Mark each workout on a weekly checklist; on Wednesday plan the rest of the week.`]],
+[`Checklists`,[`Weekly: greens daily, vegetables bought or planned, meat supply checked, zero soda, water on track, 3 workouts planned or done.`,`Monthly: soda-free month, weekly vegetable shopping, meat refill done, workout consistency, energy levels improved.`]]]},
+hob:{theme:`Tuesday: Balance, enjoyment and active recovery`,goal:`Make time for personal interests while staying balanced and consistent: cooking, swimming, cycling, football, and a monthly experience.`,secs:[
+[`1. Cook a special meal (weekly)`,[`Tuesday: decide the meal and pick a recipe from a cookbook, food blog or YouTube.`,`Friday: prepare one special or new meal.`,`Explore new cuisines, attempt more complex dishes, and involve family or friends.`,`Option: use the session to prepare meals for the coming week.`]],
+[`2. Swimming (once a month)`,[`At least one swim session per month.`,`Find accessible pools or natural water, and budget in advance so cash flow does not cause a missed month.`,`Mark the swim day early in the month; improve endurance or try new styles; invite a friend or family member sometimes.`]],
+[`3. Cycling (core physical hobby)`,[`Sunday is the long ride day.`,`Monthly distance: January 100 km, then add 50 km each month (Feb 150, Mar 200, Apr 250).`,`Keep the bike in condition; keep the water bottle, helmet and riding clothes ready.`,`Track rides with Strava or Google Maps.`,`Community riding: Baiskel Safaris (Instagram).`]],
+[`4. Football (monthly live match)`,[`Watch at least one live KPL game per month, at the stadium or a live viewing event.`,`Invite friends or family and discuss the match.`,`Learn something new each month (players, tactics, rules).`,`Join Shabana Fans road trips when possible.`]],
+[`5. Monthly experience`,[`One meaningful experience per month: nature, culture, physical activity or a learning outing.`,`Solo or social. Planned on Tuesday, done on Sunday.`]],
+[`Checklists`,[`Weekly Tuesday: Friday meal planned, cycling rides scheduled, monthly distance checked, swim plan confirmed, football planned, monthly experience planned.`,`Monthly: special meal, cycling target, group ride, swim, football match, experience.`,`Key rule: hobbies are not optional extras. They protect motivation, discipline and long-term consistency.`]]]},
+fas:{theme:`Saturday: Fashion and hobbies`,goal:`Refine personal style by investing in quality pieces, keeping grooming in check, and staying informed on fashion and technology trends.`,secs:[
+[`1. One trouser and one pair of shoes monthly`,[`Buy high-quality, versatile, timeless and durable pieces that mix and match.`,`Plan variety across the year, balancing casual and formal (for example chinos and leather shoes, then tailored trousers and sneakers).`,`Track wardrobe gaps (such as black shoes or tailored trousers) and adjust purchases.`,`Wardrobe list: old school trousers and polo T-shirts, long sleeve polo T-shirts, shorts, Shabana and Chelsea jerseys.`]],
+[`2. Regular haircut`,[`Haircut every 2 to 3 weeks.`,`Use quality shampoo, conditioner and styling products that suit your hair type.`,`Explore new hairstyles occasionally; keep hair healthy by limiting heat, not over-washing and trimming split ends.`]],
+[`3. Fashion and technology trends`,[`Set time each month to research clothing and accessory trends.`,`Add one or two trending items each season without overdoing it.`,`Learn about fashion tech: smart clothing, sustainable fabrics, 3D printing, wearables, virtual fitting rooms, AR shopping, AI stylists.`,`Follow fashion icons and influencers on Instagram, Pinterest and TikTok.`]]]},
+men:{theme:`Friday: Mental health`,goal:`Protect mental well-being by stimulating the mind, expanding knowledge, relaxing, growing, and keeping strong friendships.`,secs:[
+[`1. Mindfulness and mental health`,[`10 to 15 minutes of meditation or quiet reflection daily.`,`Keep a journal: what I learned, how I feel, what challenges I face.`,`Exercise for clarity: swimming, cycling or short walks.`,`Balanced routine with boundaries between work, study and leisure.`,`Watch one documentary a day from my saved list.`]],
+[`2. Educative podcasts`,[`Listen each morning on the way to work.`,`Start by analysing the top educative podcasts, beginning on Monday.`,`A different podcast each day, following the daily schedule.`]],
+[`3. Strengthen friendships`,[`Reach out to friends at least once a week (call, text or message).`,`Plan at least one meet-up a month, in person or virtual.`,`Organise group activities: movie or game nights, hiking, biking.`,`Celebrate birthdays, achievements and successes.`,`Reach out during tough times.`]],
+[`4. Deeper conversations`,[`Ask about friends' aspirations, thoughts, challenges and feelings.`,`Share my own struggles and successes.`,`Build on shared interests: books, movies, fitness, hobbies.`]]]},
+far:{notes:1,theme:`Saturday: Asset building and sustainable wealth`,goal:`Build productive assets through farming that create long-term wealth and diversify income beyond employment and online work. Phase one (2026): own five healthy goats by December.`,secs:[
+[`1. Research first`,[`Breeds, feeding, disease prevention, housing, breeding, veterinary care, cost of raising goats, market demand.`,`Spend time each month reading, watching videos and talking to experienced farmers.`]],
+[`2. Financial planning`,[`A dedicated Goat Farming Fund covering goats, shed, feed, vet, water, transport and emergencies.`,`The goat project must never interfere with the emergency fund.`]],
+[`3. Build infrastructure first`,[`Proper shelter, secure fencing, reliable water, feed storage, easy cleaning.`]],
+[`4. Purchase strategy`,[`Buy gradually as finances allow.`,`Milestones: June research complete, July build shed, August first two goats, October two more, December the fifth goat. (These dates are already partly past, so reset them.)`]],
+[`5. Record keeping`,[`Purchase dates, cost per goat, feed, medical treatment, breeding, growth, sales, profit and loss.`,`Good records turn farming into a business, not a hobby.`]],
+[`6. Long-term vision`,[`Goat breeding, dairy goats, sheep, poultry, fruit farming, tree planting, beekeeping, fish farming, dairy farming.`,`Every expansion needs research and financial discipline.`]],
+[`Quarterly review and success metric`,[`Review: goats owned, expenses vs budget, animal health, infrastructure, knowledge gained, next expansion.`,`By December: five healthy goats, a working shed, complete records, basic livestock knowledge, a clear plan for next year.`]]]},
+hom:{theme:`Home office and countryside house`,goal:`Finish the home office and furnish the countryside house, to improve productivity and comfort.`,secs:[
+[`Home office`,[`Set a clear vision: colour scheme, layout and extra items for focus, creativity and organisation.`,`List what is needed: desk, office chair, bookshelf, filing cabinet, lighting, and tech upgrades (monitor, keyboard, speakers).`,`Set a realistic budget and timeline: furniture first, then decor and tech. Aim to finish by March.`,`Organise and personalise: storage, plants, artwork, motivational quotes.`,`Optimise for comfort: right desk height, supportive chair, lighting that reduces eye strain, good ventilation and temperature.`]],
+[`Countryside home`,[`Finish furnishing the countryside house into a cosy, functional second home.`,`Building my countryside home: start building small.`]]]},
+fut:{theme:`Sunday: Strategic thinking and long-term vision (five-year regret test)`,goal:`Make decisions today that my future self will thank me for. Every week, think about what will be valuable in five years and start positioning early.`,secs:[
+[`Philosophy`,[`If I only do what is profitable today, I will always be behind. My advantage is preparing for what will be profitable tomorrow.`,`Every Sunday ask: "Five years from now, what would I deeply regret not starting today?"`]],
+[`Areas to evaluate every month`,[`Artificial intelligence, healthcare AI, automation, agriculture, renewable energy, digital businesses, remote work, personal branding, real estate, new investments.`,`Look for industries with long-term growth, not trends, and acquire skills, experience and assets early.`]],
+[`Monthly future review (last Sunday)`,[`What industries are growing rapidly?`,`What new skills are becoming valuable?`,`What technology is replacing old jobs?`,`What business opportunities are emerging in Kenya?`,`What should I start learning now?`,`What investment opportunities exist before they become expensive?`]],
+[`Future positioning rule`,[`Every quarter start at least one new project, skill or investment that could generate income within five years.`,`Examples: learn an AI skill, start an online business, build a software product, start a farming project, buy productive assets, build a personal brand, create digital products.`]],
+[`Decision filter and yearly success metric`,[`Before major decisions ask: "Will my five-years-from-now self thank me for this?" If no, reconsider. If yes, act immediately.`,`By year end: one future-proof skill learned, one long-term investment started, one new income stream built, and myself positioned ahead of the average person.`]]]},
+ret:{notes:1,theme:`Retire by 40. Cashflow is king.`,goal:`A grand plan to retire by 40. These are the things to stabilise first.`,secs:[
+[`The plans`,[`Successful freelancing income.`,`A self-sufficient goat farm.`,`Dairy farming.`,`A fully stocked jersey store.`,`A chips and chicken outlet, supplied by my own chicken farm.`,`Masters degree in Business Administration.`,`Start with echocardiography: already planned, joining in January.`,`Medical and education insurance for the family.`,`Furniture store.`,`Government bills and bonds.`]],
+[`Watch out for`,[`Failing business models.`]]]},
+qr:{theme:`Every three months: March, June, September and December`,goal:`Make sure I am making meaningful progress, not just staying busy. Step away from daily tasks, evaluate honestly, drop distractions and double down on high-impact work.`,secs:[
+[`Philosophy`,[`"A plan without regular review becomes a wish."`,`Ask: "If I continue living exactly as I have for the past three months, where will I be one year from now?" If I am not satisfied, change immediately.`]],
+[`Questions by area`,[`Financial: Did net worth rise? How much saved and invested? How much came from online income, and which source grew fastest? Which expenses were unnecessary?`,`Career and business: Skills gained? Which projects gave the biggest results or wasted time? What to stop and what to scale? Am I building assets or only earning income?`,`Health: Healthier than three months ago? Workouts kept? Soda-free? Nutrition, energy and sleep better? Pick one habit to improve.`,`Mental well-being: Am I happier? What caused stress? What gave peace? Friendships kept? Learning consistently?`,`Future positioning: New opportunities? Future-proof skill learned? Preparing for five years or only reacting? Pick one opportunity for next quarter.`,`Farming: On track for the goat target? Is the budget realistic? Lessons? What to improve before expanding?`]],
+[`Stop, Start, Continue`,[`Stop: time-wasting social media, unnecessary spending, low-return projects, negative relationships, procrastination.`,`Start: a new AI tool, another online income stream, expanding farming, better books, networking, productive assets.`,`Continue: content creation, saving consistently, learning, cycling, healthy eating, building a personal brand.`]],
+[`Lessons and mistakes already recorded`,[`Lesson: lack of planning pushed me deep into debt. I lacked transport money despite being one of the top earners in Kenya. Avoid shylocks at all costs.`,`Mistake: poor planning took me below zero and I had to borrow from my younger siblings to survive. No clothes updates for months.`,`Priorities: proper planning, especially financially. Reduce lagging time at all costs.`]],
+[`Personal commitment`,[`Every quarter I will pause, reflect and improve. I will celebrate progress, learn from mistakes and adjust without losing sight of my long-term vision. Success comes from consistent improvement, not perfection.`]]]}
+};
+const NOTE=[['adv','Advantages'],['dis','Disadvantages'],['exp','What I expect'],['never','What I might never see coming']];
+function getP(k){return (S.plans&&S.plans[k])||P[k]}
+function mut(k){S.plans=S.plans||{};return S.plans[k]||(S.plans[k]=JSON.parse(JSON.stringify(P[k])))}
+function planHtml(k){
+ const p=getP(k);if(!p)return'';
+ let h=`<div class="add" style="margin:0 0 8px"><button class="b ${edit?'p':''}" data-act="ed">${edit?'Done editing':'Edit this plan'}</button>${edit&&S.plans&&S.plans[k]?`<button class="b" data-act="prs" data-k="${k}">Reset to original</button>`:''}</div>`;
+ if(edit)h+=`<label for="th-${k}">Theme day</label><input id="th-${k}" data-pk="${k}" data-pf="theme" value="${esc(p.theme)}"><label for="gl-${k}">Goal</label><textarea id="gl-${k}" data-pk="${k}" data-pf="goal">${esc(p.goal)}</textarea>`;
+ else h+=(p.theme?`<p class="hint"><b>${esc(p.theme)}</b></p>`:'')+`<p class="goal">${esc(p.goal)}</p>`;
+ h+=p.secs.map((s,i)=>edit?
+ `<div class="sec"><input aria-label="Section title" style="font-weight:600" data-pk="${k}" data-pi="${i}" data-pf="title" value="${esc(s[0])}"><ul>${s[1].map((x,j)=>`<li><textarea aria-label="Point" data-pk="${k}" data-pi="${i}" data-pj="${j}" data-pf="pt">${esc(x)}</textarea><button class="x" aria-label="Delete point" data-act="px" data-k="${k}" data-i="${i}" data-j="${j}">&times;</button></li>`).join('')}</ul><div class="add"><input id="ap-${k}-${i}" placeholder="Add a point"><button class="b" data-act="pa" data-k="${k}" data-i="${i}">Add point</button><button class="b" data-act="pd" data-k="${k}" data-i="${i}">Delete section</button></div></div>`
+ :`<details ${i===0?'open':''}><summary>${esc(s[0])}</summary><ul>${s[1].map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>`).join('');
+ if(edit)h+=`<div class="add"><input id="as-${k}" placeholder="New section title"><button class="b p" data-act="ps" data-k="${k}">Add section</button></div>`;
+ if(p.notes)h+=`<details><summary>My notes: advantages, disadvantages, expectations</summary><div class="cols" style="margin-top:8px">${NOTE.map(n=>`<div><label for="${k+n[0]}">${n[1]}</label><textarea id="${k+n[0]}" data-q="${k+n[0]}">${esc(S.q[k+n[0]])}</textarea></div>`).join('')}</div></details>`;
+ return h}
+function planTab(){return `<div class="panel"><h2>The plan</h2>${planHtml('plan')}</div>`}
+function pct(i){
+ if(i.t==='c')return S.v[i.id]?100:0;
+ const c=+(S.v[i.id+'c']??i.c),t=+(S.v[i.id+'t']??i.tg);
+ return t>0?Math.max(0,Math.min(100,c/t*100)):0}
+const score=a=>a.items.reduce((s,i)=>s+pct(i),0)/a.items.length;
+function dayPct(d){const t=(S.days[d]||{}).tasks||[];return t.length?t.filter(x=>x.d).length/t.length*100:0}
+function qPct(){return QA.reduce((s,_,i)=>s+(+S.q['s'+i]||0),0)/80*100}
+const bar=p=>`<div class="bar"><b style="width:${p}%;background:${col(p)}"></b></div>`;
+const LEG='<div class="leg"><span style="--c:var(--red)">Below 20%</span><span style="--c:var(--blue)">20-59%</span><span style="--c:var(--amber)">60-89%</span><span style="--c:var(--green)">90%+</span></div>';
+
+function scoreBlock(p,label){return `<div class="score"><div class="big" style="color:${col(p)}">${Math.round(p)}%</div>${bar(p)}</div>`}
+
+function nav(){
+ const tabs=[['daily','Daily',dayPct(date)],['plan','The plan',null],['over','Overview',null],...A.map(a=>[a.k,a.n,score(a)]),['qr','Quarterly review',qPct()]];
+ document.getElementById('nav').innerHTML=tabs.map(t=>`<button class="tab ${tab===t[0]?'on':''}" data-tab="${t[0]}">${t[1]}${t[2]!==null?`<i style="background:${col(t[2])}">${Math.round(t[2])}%</i>`:''}</button>`).join('')}
+
+function daily(){
+ const d=S.days[date]||(S.days[date]={tasks:[],right:'',wrong:'',mistakes:'',improve:''}),n=addDay(date,1);
+ const nd=S.days[n]||(S.days[n]={tasks:[],right:'',wrong:'',mistakes:'',improve:''});
+ const p=dayPct(date),th=THEMES[new Date(date+'T12:00').getDay()];
+ const list=(arr,day)=>arr.length?arr.map((t,i)=>`<div class="task ${t.d?'done':''}"><input type="checkbox" aria-label="Done" data-act="tg" data-day="${day}" data-i="${i}" ${t.d?'checked':''}><span>${esc(t.t)}</span><button class="x" aria-label="Remove task" data-act="rm" data-day="${day}" data-i="${i}">&times;</button></div>`).join(''):'<p class="hint">No tasks yet. Add one below.</p>';
+ const ta=(f,l,h)=>`<div class="panel"><h3 style="margin-top:0">${l}</h3><p class="hint">${h}</p><textarea data-f="${f}">${esc(d[f])}</textarea></div>`;
+ return `<div class="panel"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><button class="b" data-act="prev">Previous day</button><input type="date" id="dp" value="${date}" style="width:auto"><button class="b" data-act="next">Next day</button><button class="b" data-act="now">Today</button></div>
+ <h2>Plan for ${esc(date)} <small class="hint">Theme: ${th}</small></h2>${LEG}${scoreBlock(p)}
+ <p class="hint">What should be done today. Tick each task when it is done.</p>${list(d.tasks,date)}
+ <div class="add"><input id="nt" placeholder="Add a task for this day"><button class="b p" data-act="add" data-day="${date}" data-in="nt">Add task</button></div></div>
+ <div class="cols">${ta('right','What I did right','Wins and good decisions today.')}${ta('wrong','What I did wrong','Be honest and specific.')}${ta('mistakes','Mistakes I made','What went off track, and why.')}${ta('improve','How I will improve','One clear fix for each mistake.')}</div>
+ <div class="panel"><h2>Tomorrow's plan (${esc(n)})</h2><p class="hint">These tasks appear as tomorrow's to-do list.</p>${list(nd.tasks,n)}
+ <div class="add"><input id="tt" placeholder="Add a task for tomorrow"><button class="b p" data-act="add" data-day="${n}" data-in="tt">Add task</button></div></div>`}
+
+function agenda(a){
+ const p=score(a);
+ let x=`<div class="panel"><h2>${a.n}</h2>${LEG}${scoreBlock(p)}${planHtml(a.k)}<h3>Track your progress</h3>`;
+ if(a.k==='ret'){
+  const dob=S.dob;let cd='Enter your date of birth to start the countdown.';
+  if(dob){const t=new Date(dob+'T12:00');t.setFullYear(t.getFullYear()+40);const ms=t-new Date();
+   if(ms>0){const d=Math.ceil(ms/864e5);cd=`${Math.floor(d/365)} years and ${Math.floor(d%365/30)} months until you turn 40 (${d.toLocaleString()} days).`}else cd='You have reached 40.'}
+  x+=`<h3>Countdown to 40</h3><div class="add" style="margin:0 0 6px"><input type="date" id="dob" value="${esc(dob)}" style="width:auto" aria-label="Date of birth"><span class="hint" style="align-self:center;margin:0">${cd}</span></div><p class="hint">First row: set the target to the monthly cashflow you need to retire, and the current value to what online and passive income pays now.</p>`}
+ x+=a.items.map(i=>i.t==='c'?`<div class="row chk"><label for="${i.id}">${esc(i.n)}</label><span class="pc"><input type="checkbox" id="${i.id}" data-c="${i.id}" ${S.v[i.id]?'checked':''}></span></div>`:
+ `<div class="row"><label for="${i.id}">${esc(i.n)}</label><input type="number" id="${i.id}" data-n="${i.id}c" value="${S.v[i.id+'c']??i.c}" aria-label="Current"><input type="number" data-n="${i.id}t" value="${S.v[i.id+'t']??i.tg}" aria-label="Target"><span class="pc" style="color:${col(pct(i))}">${Math.round(pct(i))}%</span></div>`).join('')
+ +`<p class="hint" style="margin-top:10px">Number rows: first box is where you are now, second is the target.</p></div>`;
+ return x}
+
+function over(){
+ return `<div class="panel"><h2>Overview</h2>${LEG}`+[['daily',"Today's tasks",dayPct(date)],...A.map(a=>[a.k,a.n,score(a)]),['qr','Quarterly scorecard',qPct()]].map(r=>`<div class="ov" data-tab="${r[0]}"><span style="min-width:150px">${r[1]}</span>${bar(r[2])}<b class="pc" style="color:${col(r[2])};min-width:48px">${Math.round(r[2])}%</b></div>`).join('')
+ +`<div class="add" style="margin-top:16px"><button class="b" data-act="exp">Download backup</button><label class="b" style="cursor:pointer">Restore backup<input type="file" id="imp" accept=".json" hidden></label></div><p class="hint">Your data is saved in this browser. Download a backup now and then.</p></div>`}
+
+function qr(){
+ const p=qPct(),ta=(f,l)=>`<div class="panel"><h3 style="margin-top:0">${l}</h3><textarea data-q="${f}">${esc(S.q[f])}</textarea></div>`;
+ return `<div class="panel"><h2>Quarterly life review</h2><p class="hint">Do this in March, June, September and December. Score each area out of 10.</p>${planHtml('qr')}<h3>Scorecard</h3>${LEG}${scoreBlock(p)}`+
+ QA.map((q,i)=>`<div class="row chk"><label for="q${i}">${q}</label><input type="number" id="q${i}" min="0" max="10" data-q="s${i}" value="${S.q['s'+i]??''}" aria-label="Score out of 10"></div>`).join('')+
+ `<p class="hint" style="margin-top:10px">Overall: ${QA.reduce((s,_,i)=>s+(+S.q['s'+i]||0),0)} / 80</p></div>
+ <div class="cols">${ta('wins','Biggest wins (three)')}${ta('lessons','Biggest lessons')}${ta('mist','Biggest mistakes')}${ta('prio','Top five priorities for next quarter')}${ta('stop','Stop')}${ta('start','Start')}${ta('cont','Continue')}</div>`}
+
+function render(){
+ const m=document.getElementById('main'),y=window.scrollY;
+ m.innerHTML=tab==='daily'?daily():tab==='plan'?planTab():tab==='over'?over():tab==='qr'?qr():agenda(A.find(a=>a.k===tab));
+ nav();window.scrollTo(0,y)}
+document.getElementById('today').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-tab]');if(t){tab=t.dataset.tab;render();window.scrollTo(0,0);return}
+ const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
+ if(a==='prev')date=addDay(date,-1);else if(a==='next')date=addDay(date,1);else if(a==='now')date=iso(new Date());
+ else if(a==='add'){const inp=document.getElementById(b.dataset.in),v=inp.value.trim();if(!v)return;(S.days[b.dataset.day]=S.days[b.dataset.day]||{tasks:[]}).tasks.push({t:v,d:false})}
+ else if(a==='rm')S.days[b.dataset.day].tasks.splice(+b.dataset.i,1);
+ else if(a==='exp'){const l=document.createElement('a');l.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));l.download='tracker-backup-'+iso(new Date())+'.json';l.click();return}
+ else if(a==='ed')edit=!edit;
+ else if(a==='prs'){if(!confirm('Restore the original plan and discard your edits?'))return;delete S.plans[b.dataset.k]}
+ else if(a==='px')mut(b.dataset.k).secs[+b.dataset.i][1].splice(+b.dataset.j,1);
+ else if(a==='pa'){const v=document.getElementById('ap-'+b.dataset.k+'-'+b.dataset.i).value.trim();if(!v)return;mut(b.dataset.k).secs[+b.dataset.i][1].push(v)}
+ else if(a==='pd'){if(!confirm('Delete this whole section?'))return;mut(b.dataset.k).secs.splice(+b.dataset.i,1)}
+ else if(a==='ps'){const v=document.getElementById('as-'+b.dataset.k).value.trim();if(!v)return;mut(b.dataset.k).secs.push([v,[]])}
+ else return;
+ save();render()});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id&&/^(nt$|tt$|ap-|as-)/.test(e.target.id))e.target.nextElementSibling.click()});
+document.addEventListener('change',e=>{
+ const t=e.target;
+ if(t.dataset.pk){const m=mut(t.dataset.pk),f=t.dataset.pf;if(f==='theme'||f==='goal')m[f]=t.value;else if(f==='title')m.secs[+t.dataset.pi][0]=t.value;else m.secs[+t.dataset.pi][1][+t.dataset.pj]=t.value}
+ else if(t.dataset.act==='tg'){S.days[t.dataset.day].tasks[+t.dataset.i].d=t.checked}
+ else if(t.dataset.c)S.v[t.dataset.c]=t.checked;
+ else if(t.dataset.n)S.v[t.dataset.n]=t.value;
+ else if(t.dataset.f)S.days[date][t.dataset.f]=t.value;
+ else if(t.dataset.q){let v=t.value;if(t.type==='number')v=Math.max(0,Math.min(10,+v||0));S.q[t.dataset.q]=v}
+ else if(t.id==='dp'&&t.value)date=t.value;
+ else if(t.id==='dob')S.dob=t.value;
+ else if(t.id==='imp'){const f=t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{S=Object.assign({v:{},days:{},q:{},dob:'',plans:{}},JSON.parse(r.result));save();render()}catch(x){alert('That file is not a valid backup.')}};r.readAsText(f);return}
+ else return;
+ save();render()});
+render();
+</script></body></html>
